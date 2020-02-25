@@ -3,6 +3,7 @@ import random
 import cv2
 import numpy as np
 import os
+import time
 
 
 def randomcolor():
@@ -189,7 +190,7 @@ def mode_select(state):
             video = "http://admin:admin@192.168.0.13:8081"
             # video = 0
         elif state == 'video':
-            video = '/home/dengjie/dengjie/project/detection/darknet/video3.mp4'
+            video = '/home/dengjie/dengjie/project/detection/darknet/test/test_video/video1.mp4'
         cap = cv2.VideoCapture(video)
     else:
         cap = 1
@@ -216,20 +217,20 @@ def find_object_in_picture(r, img):
 def save_video(state, out_video):
     if state == 'video':
         if out_video:
-            img = cv2.imread('/home/dengjie/dengjie/project/detection/darknet//result_frame/result_frame_0.jpg', 1)
+            img = cv2.imread('/home/dengjie/dengjie/project/detection/darknet/result/result_frame/result_frame_0.jpg', 1)
             isColor = 1
             FPS = 20.0
             frameWidth = img.shape[1]
             frameHeight = img.shape[0]
             fourcc = cv2.VideoWriter_fourcc(*'XVID')
-            out = cv2.VideoWriter('/home/dengjie/dengjie/project/detection/darknet/result_video.avi', fourcc, FPS,
+            out = cv2.VideoWriter('/home/dengjie/dengjie/project/detection/darknet/result/result_video/result_video.avi', fourcc, FPS,
                                   (frameWidth, frameHeight), isColor)
-            root = '/home/dengjie/dengjie/project/detection/darknet/result_frame'
+            root = '/home/dengjie/dengjie/project/detection/darknet/result/result_frame'
             list = os.listdir(root)
             print(len(list))
             for i in range(len(list)):
                 frame = cv2.imread(
-                    '/home/dengjie/dengjie/project/detection/darknet/result_frame/result_frame_%d.jpg' % i, 1)
+                    '/home/dengjie/dengjie/project/detection/darknet/result/result_frame/result_frame_%d.jpg' % i, 1)
                 out.write(frame)
                 if cv2.waitKey(25) & 0xFF == ord('q'):
                     break
@@ -256,9 +257,8 @@ def load_model():
 if __name__ == "__main__":
     net, meta, LABELS, nclass = load_model()
     k = 0
-    out_video = 0
-    path = '../test_pic'
-    state = 'picture'  # 检测模式选择,state = 'video','picture','real_time'
+    path = '../test/test_pic'
+    state = 'video'  # 检测模式选择,state = 'video','picture','real_time'
     cap = mode_select(state)
     # 为每个类别的边界框随机匹配相应颜色
     np.random.seed(80)
@@ -270,6 +270,7 @@ if __name__ == "__main__":
         k = 0
         print('test_list', test_list)
         for j in test_list:
+            stime_p = time.time()
             img = cv2.imread(os.path.join(path, j), 1)
             r = detect(net, meta, img)
             # print(r)
@@ -277,23 +278,30 @@ if __name__ == "__main__":
             # (414.55322265625, 279.70245361328125, 483.99005126953125, 394.2349853515625))]
             # 类别，识别概率，识别物体的X坐标，识别物体的Y坐标，识别物体的长度，识别物体的高度
             image = find_object_in_picture(r, img)
+            t = time.time() - stime_p
+            print('process time is %.5f s'%t)
             if j != test_list[0]:
                 cv2.imshow("img", img)
-                cv2.imwrite('/home/dengjie/dengjie/project/detection/darknet/result_pic/result_%d.jpg' % k, image)
+                cv2.imwrite('/home/dengjie/dengjie/project/detection/darknet/result/result_pic/result_%d.jpg' % k, image)
                 k += 1
                 cv2.waitKey()
         cv2.destroyAllWindows()
+        print('Have Done!')
     else:
         while True:
+            stime_v = time.time()
             ret, img = cap.read()
-            fps = cap.get(cv2.CAP_PROP_FPS)
-            print('fps', fps)
+            # fps = cap.get(cv2.CAP_PROP_FPS)
+            # print('fps', fps)
             if ret:
                 r = detect(net, meta, img)
                 image = find_object_in_picture(r, img)
                 cv2.imshow("window", image)
+                fps = 1 / (time.time() - stime_v)
+                print('FPS ', fps)
                 if state == 'video':
-                    cv2.imwrite('/home/dengjie/dengjie/project/detection/darknet/result_frame/result_frame_%d.jpg' % k,
+                    cv2.imwrite('/home/dengjie/dengjie/project/detection/darknet/result/'
+                                'result_frame/result_frame_%d.jpg' % k,
                                 image)
                     k += 1
             else:
