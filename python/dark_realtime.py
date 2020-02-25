@@ -166,8 +166,6 @@ def detect(net, meta, image, thresh=.5, hier_thresh=.5, nms=.45):
     if nms: do_nms_obj(dets, num, meta.classes, nms)
 
     res = []
-    print('num', num)
-    print('num.type', type(num))
     for j in range(num):
         a = dets[j].prob[0:meta.classes]
         if any(a):
@@ -198,17 +196,20 @@ def mode_select(state):
     return cap
 
 
-def find_object_in_picture(r):
+def find_object_in_picture(r, img):
     for i in r:
-        color = randomcolor()
-        print(color)
+        #index = LABELS.index(str(i[0])[2:-1])
+        index = LABELS.index(i[0].decode())
+        color = COLORS[index].tolist()
         x, y, w, h = i[2][0], i[2][1], i[2][2], i[2][3]
         xmin, ymin, xmax, ymax = convertBack(float(x), float(y), float(w), float(h))
         pt1 = (xmin, ymin)
         pt2 = (xmax, ymax)
+        text = i[0].decode() + " [" + str(round(i[1] * 100, 2)) + "]"
         cv2.rectangle(img, pt1, pt2, color, 3)
-        cv2.putText(img, i[0].decode() + " [" + str(round(i[1] * 100, 2)) + "]", (pt1[0] + 10, pt1[1] + 20),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
+        (text_w, text_h), baseline = cv2.getTextSize(text, cv2.FONT_HERSHEY_SIMPLEX, 1, 2)
+        cv2.rectangle(img, (pt1[0], pt1[1] - text_h - baseline), (pt1[0] + text_w, pt1[1]), color, -1)
+        cv2.putText(img, text, (pt1[0], pt1[1] - 5), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 0), 2)
     return img
 
 
@@ -240,21 +241,28 @@ def save_video(state, out_video):
     else:
         return 0
 
+
 def load_model():
     net = load_net(b"/home/dengjie/dengjie/project/detection/darknet/cfg/yolov3.cfg",
                    b"/home/dengjie/dengjie/project/detection/darknet/yolov3.weights",
                    0)
     meta = load_meta("/home/dengjie/dengjie/project/detection/darknet/cfg/coco.data".encode('utf-8'))
-    return net, meta
+    label_path = '../data/coco.names'
+    LABELS = open(label_path).read().strip().split("\n")
+    nclass = len(LABELS)
+    return net, meta, LABELS ,nclass
 
 
 if __name__ == "__main__":
-    net, meta = load_model()
+    net, meta, LABELS, nclass = load_model()
     k = 0
     out_video = 0
     path = '../test_pic'
     state = 'picture'  # 检测模式选择,state = 'video','picture','real_time'
     cap = mode_select(state)
+    # 为每个类别的边界框随机匹配相应颜色
+    np.random.seed(80)
+    COLORS = np.random.randint(0, 256, size=(nclass, 3), dtype='uint8')  #
     print('start detect')
     if cap == 1:
         test_list = os.listdir(path)
@@ -264,11 +272,11 @@ if __name__ == "__main__":
         for j in test_list:
             img = cv2.imread(os.path.join(path, j), 1)
             r = detect(net, meta, img)
-            print(r)
+            # print(r)
             # [(b'person', 0.6372514963150024,
             # (414.55322265625, 279.70245361328125, 483.99005126953125, 394.2349853515625))]
             # 类别，识别概率，识别物体的X坐标，识别物体的Y坐标，识别物体的长度，识别物体的高度
-            image = find_object_in_picture(r)
+            image = find_object_in_picture(r, img)
             if j != test_list[0]:
                 cv2.imshow("img", img)
                 cv2.imwrite('/home/dengjie/dengjie/project/detection/darknet/result_pic/result_%d.jpg' % k, image)
@@ -282,11 +290,7 @@ if __name__ == "__main__":
             print('fps', fps)
             if ret:
                 r = detect(net, meta, img)
-                print(r)
-                # [(b'person', 0.6372514963150024,
-                # (414.55322265625, 279.70245361328125, 483.99005126953125, 394.2349853515625))]
-                # 类别，识别概率，识别物体的X坐标，识别物体的Y坐标，识别物体的长度，识别物体的高度
-                image = find_object_in_picture(r)
+                image = find_object_in_picture(r, img)
                 cv2.imshow("window", image)
                 if state == 'video':
                     cv2.imwrite('/home/dengjie/dengjie/project/detection/darknet/result_frame/result_frame_%d.jpg' % k,
