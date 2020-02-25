@@ -183,81 +183,80 @@ def detect(net, meta, image, thresh=.5, hier_thresh=.5, nms=.45):
     return res
 
 
-if __name__ == "__main__":
-    k = 0
-    out_video = 0
-    path = '../test_pic'
+def mode_select(state):
+    if state not in {'picture', 'video','real_time'}:
+        raise ValueError('{} is not a valid argument!'.format(state))
+    if state == 'video' or state == 'real_time':
+        if state == 'real_time':
+            video = "http://admin:admin@192.168.0.13:8081"
+            # video = 0
+        elif state == 'video':
+            video = '/home/dengjie/dengjie/project/detection/darknet/video3.mp4'
+        cap = cv2.VideoCapture(video)
+    else:
+        cap = 1
+    return cap
+
+
+def find_object_in_picture(r):
+    for i in r:
+        color = randomcolor()
+        print(color)
+        x, y, w, h = i[2][0], i[2][1], i[2][2], i[2][3]
+        xmin, ymin, xmax, ymax = convertBack(float(x), float(y), float(w), float(h))
+        pt1 = (xmin, ymin)
+        pt2 = (xmax, ymax)
+        cv2.rectangle(img, pt1, pt2, color, 3)
+        cv2.putText(img, i[0].decode() + " [" + str(round(i[1] * 100, 2)) + "]", (pt1[0] + 10, pt1[1] + 20),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
+    return img
+
+
+def save_video(state, out_video):
+    if state == 'video':
+        if out_video:
+            img = cv2.imread('/home/dengjie/dengjie/project/detection/darknet//result_frame/result_frame_0.jpg', 1)
+            isColor = 1
+            FPS = 20.0
+            frameWidth = img.shape[1]
+            frameHeight = img.shape[0]
+            fourcc = cv2.VideoWriter_fourcc(*'XVID')
+            out = cv2.VideoWriter('/home/dengjie/dengjie/project/detection/darknet/result_video.avi', fourcc, FPS,
+                                  (frameWidth, frameHeight), isColor)
+            root = '/home/dengjie/dengjie/project/detection/darknet/result_frame'
+            list = os.listdir(root)
+            print(len(list))
+            for i in range(len(list)):
+                frame = cv2.imread(
+                    '/home/dengjie/dengjie/project/detection/darknet/result_frame/result_frame_%d.jpg' % i, 1)
+                out.write(frame)
+                if cv2.waitKey(25) & 0xFF == ord('q'):
+                    break
+            out.release()
+            print('video has already saved.')
+            return 1
+        else:
+            return 0
+    else:
+        return 0
+
+def load_model():
     net = load_net(b"/home/dengjie/dengjie/project/detection/darknet/cfg/yolov3.cfg",
                    b"/home/dengjie/dengjie/project/detection/darknet/yolov3.weights",
                    0)
     meta = load_meta("/home/dengjie/dengjie/project/detection/darknet/cfg/coco.data".encode('utf-8'))
-    state = 'real_time'  # 检测模式选择,state = 'video','picture','real_time'
-    if state == 'video' or state == 'real_time':
-        if state == 'real_time':
-            video = "http://admin:admin@192.168.0.13:8081"
-        elif state == 'video':
-            video = '/home/dengjie/dengjie/project/detection/darknet/video3.mp4'
-            # video = 0
-        cap = cv2.VideoCapture(video)
-        print('start detect')
+    return net, meta
 
-        while True:
-            ret, img = cap.read()
-            fps = cap.get(cv2.CAP_PROP_FPS)
-            print('fps', fps)
-            if ret:
-                r = detect(net, meta, img)
-                print(r)
-                # [(b'person', 0.6372514963150024,
-                # (414.55322265625, 279.70245361328125, 483.99005126953125, 394.2349853515625))]
-                # 类别，识别概率，识别物体的X坐标，识别物体的Y坐标，识别物体的长度，识别物体的高度
 
-                for i in r:
-                    color = randomcolor()
-                    x, y, w, h = i[2][0], i[2][1], i[2][2], i[2][3]
-                    xmin, ymin, xmax, ymax = convertBack(float(x), float(y), float(w), float(h))
-                    pt1 = (xmin, ymin)
-                    pt2 = (xmax, ymax)
-                    cv2.rectangle(img, pt1, pt2, color, 2)
-                    cv2.putText(img, i[0].decode() + " [" + str(round(i[1] * 100, 2)) + "]", (pt1[0], pt1[1] + 20),
-                                cv2.FONT_HERSHEY_SIMPLEX, 1, color, 4)
-                cv2.imshow("window", img)
-                if state == 'video':
-                    cv2.imwrite('/home/dengjie/dengjie/project/detection/darknet/result_frame/result_frame_%d.jpg' % k,
-                                img)
-                    k += 1
-
-            else:
-                cap.release()
-                cv2.destroyAllWindows()
-                break
-            if cv2.waitKey(1) & 0xFF == ord('q'):
-                #cv2.waitKey(1) 1为参数，单位毫秒，表示间隔时间,ord(' ')将字符转化为对应的整数（ASCII码）;cv2.waitKey()和(0)是等待输入
-                cap.release()
-                cv2.destroyAllWindows()
-                break
-        if state == 'video':
-            if out_video:
-                img = cv2.imread('/home/dengjie/dengjie/project/detection/darknet//result_frame/result_frame_0.jpg', 1)
-                isColor = 1
-                FPS = 20.0
-                frameWidth = img.shape[1]
-                frameHeight = img.shape[0]
-                fourcc = cv2.VideoWriter_fourcc(*'XVID')
-                out = cv2.VideoWriter('/home/dengjie/dengjie/project/detection/darknet/result_video.avi', fourcc, FPS,
-                                      (frameWidth, frameHeight), isColor)
-                root = '/home/dengjie/dengjie/project/detection/darknet//result_frame'
-                list = os.listdir(root)
-                print(len(list))
-                for i in range(len(list)):
-                    frame = cv2.imread(
-                        '/home/dengjie/dengjie/project/detection/darknet/result_frame/result_frame_%d.jpg' % i, 1)
-                    out.write(frame)
-                    if cv2.waitKey(25) & 0xFF == ord('q'):
-                        break
-                out.release()
-                print('video has already saved.')
-    else:
+if __name__ == "__main__":
+    net, meta = load_model()
+    k = 0
+    out_video = 0
+    path = '../test_pic'
+    state = 'picture'  # 检测模式选择,state = 'video','picture','real_time'
+    cap = mode_select(state)
+    print('start detect')
+    if cap == 1:
         test_list = os.listdir(path)
         test_list.sort()
         k = 0
@@ -269,19 +268,41 @@ if __name__ == "__main__":
             # [(b'person', 0.6372514963150024,
             # (414.55322265625, 279.70245361328125, 483.99005126953125, 394.2349853515625))]
             # 类别，识别概率，识别物体的X坐标，识别物体的Y坐标，识别物体的长度，识别物体的高度
-            for i in r:
-                color = randomcolor()
-                print(color)
-                x, y, w, h = i[2][0], i[2][1], i[2][2], i[2][3]
-                xmin, ymin, xmax, ymax = convertBack(float(x), float(y), float(w), float(h))
-                pt1 = (xmin, ymin)
-                pt2 = (xmax, ymax)
-                cv2.rectangle(img, pt1, pt2, color, 3)
-                cv2.putText(img, i[0].decode() + " [" + str(round(i[1] * 100, 2)) + "]", (pt1[0] + 10, pt1[1] + 20),
-                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
+            image = find_object_in_picture(r)
             if j != test_list[0]:
                 cv2.imshow("img", img)
-                cv2.imwrite('/home/dengjie/dengjie/project/detection/darknet/result_pic/result_%d.jpg' % k, img)
+                cv2.imwrite('/home/dengjie/dengjie/project/detection/darknet/result_pic/result_%d.jpg' % k, image)
                 k += 1
                 cv2.waitKey()
         cv2.destroyAllWindows()
+    else:
+        while True:
+            ret, img = cap.read()
+            fps = cap.get(cv2.CAP_PROP_FPS)
+            print('fps', fps)
+            if ret:
+                r = detect(net, meta, img)
+                print(r)
+                # [(b'person', 0.6372514963150024,
+                # (414.55322265625, 279.70245361328125, 483.99005126953125, 394.2349853515625))]
+                # 类别，识别概率，识别物体的X坐标，识别物体的Y坐标，识别物体的长度，识别物体的高度
+                image = find_object_in_picture(r)
+                cv2.imshow("window", image)
+                if state == 'video':
+                    cv2.imwrite('/home/dengjie/dengjie/project/detection/darknet/result_frame/result_frame_%d.jpg' % k,
+                                image)
+                    k += 1
+            else:
+                cap.release()
+                cv2.destroyAllWindows()
+                break
+            if cv2.waitKey(1) & 0xFF == ord('q'):
+                # cv2.waitKey(1) 1为参数，单位毫秒，表示间隔时间,ord(' ')将字符转化为对应的整数（ASCII码）;cv2.waitKey()和(0)是等待输入
+                cap.release()
+                cv2.destroyAllWindows()
+                break
+        val = save_video(state,True)
+        if val == 1:
+            print('Have Done!')
+        else:
+            print('No need for outputting video.')
