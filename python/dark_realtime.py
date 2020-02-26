@@ -187,10 +187,10 @@ def mode_select(state):
         raise ValueError('{} is not a valid argument!'.format(state))
     if state == 'video' or state == 'real_time':
         if state == 'real_time':
-            video = "http://admin:admin@192.168.0.13:8081"
-            # video = 0
+            #video = "http://admin:admin@192.168.0.13:8081"
+            video = 0
         elif state == 'video':
-            video = '/home/dengjie/dengjie/project/detection/darknet/test/test_video/video1.mp4'
+            video = '../test/test_video/video1.mp4'
         cap = cv2.VideoCapture(video)
     else:
         cap = 1
@@ -217,20 +217,19 @@ def find_object_in_picture(r, img):
 def save_video(state, out_video):
     if state == 'video':
         if out_video:
-            img = cv2.imread('/home/dengjie/dengjie/project/detection/darknet/result/result_frame/result_frame_0.jpg', 1)
+            img = cv2.imread('../result/result_frame/result_frame_0.jpg', 1)
             isColor = 1
             FPS = 20.0
             frameWidth = img.shape[1]
             frameHeight = img.shape[0]
             fourcc = cv2.VideoWriter_fourcc(*'XVID')
-            out = cv2.VideoWriter('/home/dengjie/dengjie/project/detection/darknet/result/result_video/result_video.avi', fourcc, FPS,
+            out = cv2.VideoWriter('../result/result_video/result_video.avi', fourcc, FPS,
                                   (frameWidth, frameHeight), isColor)
-            root = '/home/dengjie/dengjie/project/detection/darknet/result/result_frame'
-            list = os.listdir(root)
-            print(len(list))
+            list = os.listdir(frame_path)
+            print('the number of video frames is', len(list))
             for i in range(len(list)):
                 frame = cv2.imread(
-                    '/home/dengjie/dengjie/project/detection/darknet/result/result_frame/result_frame_%d.jpg' % i, 1)
+                    '../result/result_frame/result_frame_%d.jpg' % i, 1)
                 out.write(frame)
                 if cv2.waitKey(25) & 0xFF == ord('q'):
                     break
@@ -251,14 +250,15 @@ def load_model():
     label_path = '../data/coco.names'
     LABELS = open(label_path).read().strip().split("\n")
     nclass = len(LABELS)
-    return net, meta, LABELS ,nclass
+    return net, meta, LABELS, nclass
 
 
 if __name__ == "__main__":
     net, meta, LABELS, nclass = load_model()
     k = 0
     path = '../test/test_pic'
-    state = 'video'  # 检测模式选择,state = 'video','picture','real_time'
+    frame_path = '../result/result_frame'
+    state = 'picture'  # 检测模式选择,state = 'video','picture','real_time'
     cap = mode_select(state)
     # 为每个类别的边界框随机匹配相应颜色
     np.random.seed(80)
@@ -268,7 +268,8 @@ if __name__ == "__main__":
         test_list = os.listdir(path)
         test_list.sort()
         k = 0
-        print('test_list', test_list)
+        sum_t = 0
+        print('test_list', test_list[1:])
         for j in test_list:
             stime_p = time.time()
             img = cv2.imread(os.path.join(path, j), 1)
@@ -279,42 +280,57 @@ if __name__ == "__main__":
             # 类别，识别概率，识别物体的X坐标，识别物体的Y坐标，识别物体的长度，识别物体的高度
             image = find_object_in_picture(r, img)
             t = time.time() - stime_p
-            print('process time is %.5f s'%t)
             if j != test_list[0]:
+                sum_t += t
+                print('process ' + j + ' spend %.5fs' % t)
                 cv2.imshow("img", img)
-                cv2.imwrite('/home/dengjie/dengjie/project/detection/darknet/result/result_pic/result_%d.jpg' % k, image)
+                cv2.imwrite('../result/result_pic/result_%d.jpg' % k, image)
                 k += 1
                 cv2.waitKey()
-        cv2.destroyAllWindows()
+                cv2.destroyAllWindows()
+        print('Have processed %d pictures.' % k)
+        print('Total picture-processing time is %.5fs' % sum_t)
+        print('Average processing time is %.5fs' % (sum_t/k))
         print('Have Done!')
     else:
+        sum_v = 0
+        sum_fps = 0
+        i = 0 # 帧数记录
         while True:
             stime_v = time.time()
             ret, img = cap.read()
             # fps = cap.get(cv2.CAP_PROP_FPS)
             # print('fps', fps)
             if ret:
+                i += 1
                 r = detect(net, meta, img)
                 image = find_object_in_picture(r, img)
                 cv2.imshow("window", image)
-                fps = 1 / (time.time() - stime_v)
-                print('FPS ', fps)
+                t_v = time.time() - stime_v
+                fps = 1 / t_v
+                if i > 1:
+                    print('FPS %.3f' % fps)
+                    sum_fps += fps
+                sum_v += t_v
                 if state == 'video':
-                    cv2.imwrite('/home/dengjie/dengjie/project/detection/darknet/result/'
-                                'result_frame/result_frame_%d.jpg' % k,
-                                image)
+                    cv2.imwrite('../result/result_frame/result_frame_%d.jpg' % k, image)
                     k += 1
-            else:
+            else:  # 视频播放结束
+                print('Total processing time is %.5fs' % sum_v)
+                print('Detected frames : %d ' % i)
+                print('Average fps is %.3f' % (sum_fps/(i-1)))
                 cap.release()
                 cv2.destroyAllWindows()
                 break
             if cv2.waitKey(1) & 0xFF == ord('q'):
-                # cv2.waitKey(1) 1为参数，单位毫秒，表示间隔时间,ord(' ')将字符转化为对应的整数（ASCII码）;cv2.waitKey()和(0)是等待输入
+                # cv2.waitKey(1) 1为参数，单位毫秒，表示间隔时间,ord(' ')将字符转化为对应的整数（ASCII码）;
+                # cv2.waitKey()和(0)是等待输入
+                print('Average fps is %.3f' % (sum_fps/(i-1)))
                 cap.release()
                 cv2.destroyAllWindows()
                 break
-        val = save_video(state,True)
+        val = save_video(state, True)
         if val == 1:
             print('Have Done!')
         else:
-            print('No need for outputting video.')
+            print('Detection has finished.')
