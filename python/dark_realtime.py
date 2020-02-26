@@ -192,11 +192,14 @@ def find_object_in_picture(ret, img):
         xmin, ymin, xmax, ymax = convertBack(float(x), float(y), float(w), float(h))
         pt1 = (xmin, ymin)
         pt2 = (xmax, ymax)
-        text = i[0].decode() + " [" + str(round(i[1] * 100, 2)) + "]"
+        if state == 'video':
+            text = i[0].decode()
+        else:
+            text = i[0].decode() + " [" + str(round(i[1] * 100, 2)) + "]"
         cv2.rectangle(img, pt1, pt2, color, 3)
-        (text_w, text_h), baseline = cv2.getTextSize(text, cv2.FONT_HERSHEY_SIMPLEX, 1, 2)
+        (text_w, text_h), baseline = cv2.getTextSize(text, cv2.FONT_HERSHEY_SIMPLEX, 0.5, 1)
         cv2.rectangle(img, (pt1[0], pt1[1] - text_h - baseline), (pt1[0] + text_w, pt1[1]), color, -1)
-        cv2.putText(img, text, (pt1[0], pt1[1] - 5), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 0), 2)
+        cv2.putText(img, text, (pt1[0], pt1[1] - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 1)
     return img
 
 
@@ -261,7 +264,7 @@ if __name__ == "__main__":
     path = '../test/test_pic'
     frame_path = '../result/result_frame'
 
-    state = 'real_time'  # 检测模式选择,state = 'video','picture','real_time'
+    state = 'picture'  # 检测模式选择,state = 'video','picture','real_time'
 
     net, meta, LABELS, class_num = load_model()
     cap = mode_select(state)
