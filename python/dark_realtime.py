@@ -6,20 +6,6 @@ import os
 import time
 
 
-def randomcolor():
-    '''
-    colorArr = ['1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F']
-    color = ""
-    for i in range(6):
-        color += colorArr[random.randint(0, 14)]
-    return "#" + color
-    :return:
-    '''
-    color = np.random.randint(0, 256, size=[1, 3])
-    color = color.tolist()[0]
-    return color
-
-
 def sample(probs):
     s = sum(probs)
     probs = [a / s for a in probs]
@@ -183,11 +169,11 @@ def detect(net, meta, image, thresh=.5, hier_thresh=.5, nms=.45):
 
 
 def mode_select(state):
-    if state not in {'picture', 'video','real_time'}:
+    if state not in {'picture', 'video', 'real_time'}:
         raise ValueError('{} is not a valid argument!'.format(state))
     if state == 'video' or state == 'real_time':
         if state == 'real_time':
-            #video = "http://admin:admin@192.168.0.13:8081"
+            # video = "http://admin:admin@192.168.0.13:8081"
             video = 0
         elif state == 'video':
             video = '../test/test_video/video1.mp4'
@@ -197,9 +183,9 @@ def mode_select(state):
     return cap
 
 
-def find_object_in_picture(r, img):
-    for i in r:
-        #index = LABELS.index(str(i[0])[2:-1])
+def find_object_in_picture(ret, img):
+    for i in ret:
+        # index = LABELS.index(str(i[0])[2:-1])
         index = LABELS.index(i[0].decode())
         color = COLORS[index].tolist()
         x, y, w, h = i[2][0], i[2][1], i[2][2], i[2][3]
@@ -243,27 +229,45 @@ def save_video(state, out_video):
 
 
 def load_model():
-    net = load_net(b"/home/dengjie/dengjie/project/detection/darknet/cfg/yolov3.cfg",
-                   b"/home/dengjie/dengjie/project/detection/darknet/yolov3.weights",
-                   0)
-    meta = load_meta("/home/dengjie/dengjie/project/detection/darknet/cfg/coco.data".encode('utf-8'))
+    net1 = load_net(b"/home/dengjie/dengjie/project/detection/darknet/cfg/yolov3.cfg",
+                    b"/home/dengjie/dengjie/project/detection/darknet/yolov3.weights",
+                    0)
+    meta1 = load_meta("/home/dengjie/dengjie/project/detection/darknet/cfg/coco.data".encode('utf-8'))
     label_path = '../data/coco.names'
-    LABELS = open(label_path).read().strip().split("\n")
-    nclass = len(LABELS)
-    return net, meta, LABELS, nclass
+    LABELS1 = open(label_path).read().strip().split("\n")
+    num_class = len(LABELS1)
+    return net1, meta1, LABELS1, num_class
+
+
+def random_color(num):
+    """
+    colorArr = ['1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F']
+    color = ""
+    for i in range(6):
+        color += colorArr[random.randint(0, 14)]
+    return "#" + color
+
+    color = np.random.randint(0, 256, size=[1, 3])
+    color = color.tolist()[0]
+    """
+    # 为每个类别的边界框随机匹配相应颜色
+    np.random.seed(80)
+    COLORS = np.random.randint(0, 256, size=(num, 3), dtype='uint8')  #
+    return COLORS
 
 
 if __name__ == "__main__":
-    net, meta, LABELS, nclass = load_model()
     k = 0
     path = '../test/test_pic'
     frame_path = '../result/result_frame'
-    state = 'picture'  # 检测模式选择,state = 'video','picture','real_time'
+
+    state = 'real_time'  # 检测模式选择,state = 'video','picture','real_time'
+
+    net, meta, LABELS, class_num = load_model()
     cap = mode_select(state)
-    # 为每个类别的边界框随机匹配相应颜色
-    np.random.seed(80)
-    COLORS = np.random.randint(0, 256, size=(nclass, 3), dtype='uint8')  #
+    COLORS = random_color(class_num)
     print('start detect')
+
     if cap == 1:
         test_list = os.listdir(path)
         test_list.sort()
@@ -271,7 +275,7 @@ if __name__ == "__main__":
         sum_t = 0
         print('test_list', test_list[1:])
         for j in test_list:
-            stime_p = time.time()
+            time_p = time.time()
             img = cv2.imread(os.path.join(path, j), 1)
             r = detect(net, meta, img)
             # print(r)
@@ -279,7 +283,7 @@ if __name__ == "__main__":
             # (414.55322265625, 279.70245361328125, 483.99005126953125, 394.2349853515625))]
             # 类别，识别概率，识别物体的X坐标，识别物体的Y坐标，识别物体的长度，识别物体的高度
             image = find_object_in_picture(r, img)
-            t = time.time() - stime_p
+            t = time.time() - time_p
             if j != test_list[0]:
                 sum_t += t
                 print('process ' + j + ' spend %.5fs' % t)
@@ -290,14 +294,14 @@ if __name__ == "__main__":
                 cv2.destroyAllWindows()
         print('Have processed %d pictures.' % k)
         print('Total picture-processing time is %.5fs' % sum_t)
-        print('Average processing time is %.5fs' % (sum_t/k))
+        print('Average processing time is %.5fs' % (sum_t / k))
         print('Have Done!')
     else:
         sum_v = 0
         sum_fps = 0
-        i = 0 # 帧数记录
+        i = 0  # 帧数记录
         while True:
-            stime_v = time.time()
+            time_v = time.time()
             ret, img = cap.read()
             # fps = cap.get(cv2.CAP_PROP_FPS)
             # print('fps', fps)
@@ -306,7 +310,7 @@ if __name__ == "__main__":
                 r = detect(net, meta, img)
                 image = find_object_in_picture(r, img)
                 cv2.imshow("window", image)
-                t_v = time.time() - stime_v
+                t_v = time.time() - time_v
                 fps = 1 / t_v
                 if i > 1:
                     print('FPS %.3f' % fps)
@@ -318,14 +322,16 @@ if __name__ == "__main__":
             else:  # 视频播放结束
                 print('Total processing time is %.5fs' % sum_v)
                 print('Detected frames : %d ' % i)
-                print('Average fps is %.3f' % (sum_fps/(i-1)))
+                print('Average fps is %.3f' % (sum_fps / (i - 1)))
                 cap.release()
                 cv2.destroyAllWindows()
                 break
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 # cv2.waitKey(1) 1为参数，单位毫秒，表示间隔时间,ord(' ')将字符转化为对应的整数（ASCII码）;
                 # cv2.waitKey()和(0)是等待输入
-                print('Average fps is %.3f' % (sum_fps/(i-1)))
+                print('Detected time is %.5fs' % sum_v)
+                print('Average fps is %.3f' % (sum_fps / (i - 1)))
+                print('Detected frames : %d ' % i)
                 cap.release()
                 cv2.destroyAllWindows()
                 break
